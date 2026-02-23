@@ -1,0 +1,70 @@
+# ============================================
+# CITYMATE API GATEWAY - Configuration DOCKER
+# ============================================
+
+server:
+  port: 8090
+
+jwt:
+    secret: ${JWT_SECRET:VotreCleSecreteTresFortePourLaProductionChangezMoiAbsolument123456789}
+
+spring:
+  application:
+    name: citymate-api-gateway
+
+  cloud:
+    gateway:
+      routes:
+        # USER API (nom du service Docker)
+        - id: user-api
+          uri: http://user-api:8081
+          predicates:
+            - Path=/api/v1/auth/**, /api/v1/users/**
+          filters:
+            - StripPrefix=0
+
+        # CITY API (à venir)
+        - id: city-api
+          uri: http://city-api:8082
+          predicates:
+            - Path=/api/v1/pois/**, /api/v1/events/**, /api/v1/deals/**
+          filters:
+            - StripPrefix=0
+
+        # COMMUNITY API (à venir)
+        - id: community-api
+          uri: http://community-api:8083
+          predicates:
+            - Path=/api/v1/forum/**, /api/v1/notifications/**
+          filters:
+            - StripPrefix=0
+
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns:
+              - "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+            maxAge: 3600
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.gateway: INFO
