@@ -6,11 +6,19 @@ server:
   port: 8090
 
 jwt:
-    secret: ${JWT_SECRET:VotreCleSecreteTresFortePourLaProductionChangezMoiAbsolument123456789}
+  secret: ${JWT_SECRET:VotreCleSecreteTresFortePourLaProductionChangezMoiAbsolument123456789}
 
 spring:
   application:
     name: citymate-api-gateway
+
+  # ============================================
+  # REDIS CONFIGURATION (pour Rate Limiting)
+  # ============================================
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
 
   cloud:
     gateway:
@@ -22,6 +30,12 @@ spring:
             - Path=/api/v1/auth/**, /api/v1/users/**
           filters:
             - StripPrefix=0
+            # Rate Limiting
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 100
+                redis-rate-limiter.burstCapacity: 200
+                redis-rate-limiter.requestedTokens: 1
 
         # CITY API (à venir)
         - id: city-api
@@ -30,6 +44,12 @@ spring:
             - Path=/api/v1/pois/**, /api/v1/events/**, /api/v1/deals/**
           filters:
             - StripPrefix=0
+            # Rate Limiting
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 100
+                redis-rate-limiter.burstCapacity: 150
+                redis-rate-limiter.requestedTokens: 1
 
         # COMMUNITY API (à venir)
         - id: community-api
@@ -38,7 +58,14 @@ spring:
             - Path=/api/v1/forum/**, /api/v1/notifications/**
           filters:
             - StripPrefix=0
+            # Rate Limiting
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 100
+                redis-rate-limiter.burstCapacity: 150
+                redis-rate-limiter.requestedTokens: 1
 
+      # CORS CONFIGURATION
       globalcors:
         cors-configurations:
           '[/**]':
