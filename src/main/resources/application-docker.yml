@@ -6,7 +6,7 @@ server:
   port: 8090
 
 jwt:
-  secret: ${JWT_SECRET:VotreCleSecreteTresFortePourLaProductionChangezMoiAbsolument123456789}
+  secret: ${JWT_SECRET:Cm2K9#xP7!vQ2@wR4$eT6^yU8&iO0*aS1-dF3+gH5_jL9(kM2)nB4}
 
 spring:
   application:
