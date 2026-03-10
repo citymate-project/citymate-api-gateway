@@ -1,5 +1,7 @@
 package com.citymate.gateway.security;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -23,6 +25,8 @@ import java.util.List;
 @Component
 public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+
     @Autowired
     private JwtUtil jwtUtil;
 
@@ -41,11 +45,11 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         ServerHttpResponse response = exchange.getResponse();
         String path = request.getPath().toString();
 
-        System.out.println(" Gateway Filter: " + request.getMethod() + " " + path);
+        log.debug("Gateway Filter: {} {}", request.getMethod(), path);
 
         // Si c'est un endpoint public → passer sans validation JWT
         if (isPublicPath(path)) {
-            System.out.println("Public path, skipping JWT validation");
+            log.debug("Public path, skipping JWT validation: {}", path);
             return chain.filter(exchange);
         }
 
@@ -54,8 +58,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
         // Pas de header Authorization
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            System.out.println("No Authorization header or invalid format");
-            return unauthorizedResponse(response, "Missing or invalid Authorization header");
+            log.warn("Missing or invalid Authorization header for path: {}", path);
+            return unauthorizedResponse(response, "Missing or invalid Authorization header", path);
         }
 
         // Extraire le token
@@ -64,17 +68,17 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         // Valider le token
         try {
             if (!jwtUtil.validateToken(token)) {
-                System.out.println("Invalid JWT token");
-                return unauthorizedResponse(response, "Invalid or expired JWT token");
+                log.warn("Invalid or expired JWT token for path: {}", path);
+                return unauthorizedResponse(response, "Invalid or expired JWT token", path);
             }
         } catch (Exception e) {
-            System.out.println("JWT validation error: " + e.getMessage());
-            return unauthorizedResponse(response, "JWT validation failed");
+            log.error("JWT validation error for path {}: {}", path, e.getMessage());
+            return unauthorizedResponse(response, "JWT validation failed", path);
         }
 
         // Token valide → extraire username et l'ajouter dans les headers
         String username = jwtUtil.extractUsername(token);
-        System.out.println("JWT valid for user: " + username);
+        log.debug("JWT valid for user: {}", username);
 
         // Ajouter le username dans un header pour les APIs backend
         ServerHttpRequest modifiedRequest = request.mutate()
@@ -91,15 +95,17 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     /**
      * Retourne une réponse 401 Unauthorized avec un message JSON
+     * Format identique à ErrorResponse du user-api (timestamp, status, error, message, path)
      */
-    private Mono<Void> unauthorizedResponse(ServerHttpResponse response, String message) {
+    private Mono<Void> unauthorizedResponse(ServerHttpResponse response, String message, String path) {
         response.setStatusCode(HttpStatus.UNAUTHORIZED);
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
         String body = String.format(
-                "{\"timestamp\":\"%s\",\"status\":401,\"error\":\"Unauthorized\",\"message\":\"%s\"}",
+                "{\"timestamp\":\"%s\",\"status\":401,\"error\":\"Unauthorized\",\"message\":\"%s\",\"path\":\"%s\"}",
                 java.time.LocalDateTime.now(),
-                message
+                message,
+                path
         );
 
         return response.writeWith(
