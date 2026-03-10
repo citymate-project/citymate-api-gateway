@@ -9,19 +9,18 @@ FROM gradle:8.5-jdk17-alpine AS build
 
 WORKDIR /app
 
-# Copier tout
-COPY . .
+# Copier les fichiers de dépendances en premier (cache Docker)
+COPY build.gradle settings.gradle ./
+COPY gradle gradle
 
-# Build intelligent :
-# - Si build/libs existe → skip compilation
-# - Sinon → compile tout
-RUN if [ -d "build/libs" ] && [ -n "$(ls -A build/libs/*.jar 2>/dev/null)" ]; then \
-        echo "JAR exists, skipping build"; \
-    else \
-        echo "Building from source..."; \
-        chmod +x ./gradlew && \
-        ./gradlew build -x test --no-daemon; \
-    fi
+# Télécharger les dépendances (layer mis en cache si build.gradle ne change pas)
+RUN chmod +x ./gradlew && ./gradlew dependencies --no-daemon || true
+
+# Copier le reste du code source
+COPY src src
+
+# Toujours supprimer l'ancien build et recompiler depuis les sources
+RUN ./gradlew clean build -x test --no-daemon
 
 # ============================================
 # ÉTAPE 2 : RUNTIME
