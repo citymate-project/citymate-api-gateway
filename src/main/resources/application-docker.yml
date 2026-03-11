@@ -23,6 +23,20 @@ spring:
   cloud:
     gateway:
       routes:
+        # CITY API — en premier pour capturer /users/me/events avant la règle générique user-api
+        - id: city-api
+          uri: http://city-api:8082
+          predicates:
+            - Path=/api/v1/pois/**, /api/v1/events/**, /api/v1/deals/**, /api/v1/admin/deals/**, /api/v1/admin/events/**, /api/v1/users/me/events
+          filters:
+            - StripPrefix=0
+            # Rate Limiting
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 100
+                redis-rate-limiter.burstCapacity: 150
+                redis-rate-limiter.requestedTokens: 1
+
         # USER API (nom du service Docker)
         - id: user-api
           uri: http://user-api:8081
@@ -35,20 +49,6 @@ spring:
               args:
                 redis-rate-limiter.replenishRate: 100
                 redis-rate-limiter.burstCapacity: 200
-                redis-rate-limiter.requestedTokens: 1
-
-        # CITY API (à venir)
-        - id: city-api
-          uri: http://city-api:8082
-          predicates:
-            - Path=/api/v1/pois/**, /api/v1/events/**, /api/v1/deals/**
-          filters:
-            - StripPrefix=0
-            # Rate Limiting
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 100
-                redis-rate-limiter.burstCapacity: 150
                 redis-rate-limiter.requestedTokens: 1
 
         # COMMUNITY API

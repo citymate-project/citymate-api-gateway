@@ -24,11 +24,37 @@ spring:
       # ROUTES
       # ============================================
       routes:
+        # CITY API — en premier pour capturer /users/me/events avant la règle générique user-api
+        - id: city-api
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/v1/pois/**, /api/v1/events/**, /api/v1/deals/**, /api/v1/admin/deals/**, /api/v1/admin/events/**, /api/v1/users/me/events
+          filters:
+            - StripPrefix=0
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 100
+                redis-rate-limiter.burstCapacity: 150
+                redis-rate-limiter.requestedTokens: 1
+
         # USER API
         - id: user-api
           uri: http://localhost:8081
           predicates:
             - Path=/api/v1/auth/**, /api/v1/users/**
+          filters:
+            - StripPrefix=0
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 100
+                redis-rate-limiter.burstCapacity: 150
+                redis-rate-limiter.requestedTokens: 1
+
+        # COMMUNITY API
+        - id: community-api
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/v1/forum/**, /api/v1/notifications/**, /api/v1/admin/notifications/**
           filters:
             - StripPrefix=0
             - name: RequestRateLimiter
