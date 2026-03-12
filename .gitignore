@@ -22,3 +22,6 @@ logs/
 
 # Application
 application-local.properties
+
+
+bin/
