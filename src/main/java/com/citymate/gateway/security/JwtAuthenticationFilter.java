@@ -36,7 +36,11 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             "/api/v1/auth/login",
             "/api/v1/auth/refresh",
             "/actuator",
-            "/api/v1/auth/health"
+            "/api/v1/auth/health",
+            "/api/v1/events",
+            "/api/v1/events/categories",
+            "/api/v1/deals/categories",
+            "/api/v1/deals"
     );
 
     @Override
@@ -47,7 +51,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
         log.debug("Gateway Filter: {} {}", request.getMethod(), path);
 
-        // Si c'est un endpoint public → passer sans validation JWT
+        // Si c'est un endpoint public
         if (isPublicPath(path)) {
             log.debug("Public path, skipping JWT validation: {}", path);
             return chain.filter(exchange);
@@ -76,7 +80,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return unauthorizedResponse(response, "JWT validation failed", path);
         }
 
-        // Token valide → extraire username et l'ajouter dans les headers
+        // Token valide
         String username = jwtUtil.extractUsername(token);
         log.debug("JWT valid for user: {}", username);
 
@@ -122,6 +126,6 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     @Override
     public int getOrder() {
-        return -100; // Exécuter en premier (avant les autres filtres)
+        return -100;
     }
 }

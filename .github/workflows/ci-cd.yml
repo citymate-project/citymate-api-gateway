@@ -1,10 +1,8 @@
 name: CI/CD — API Gateway
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  push:         # Toutes les branches
+  pull_request: # Toutes les PR
 
 env:
   REGISTRY: ghcr.io
