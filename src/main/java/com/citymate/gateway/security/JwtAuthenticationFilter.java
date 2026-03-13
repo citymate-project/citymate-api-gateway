@@ -17,10 +17,6 @@ import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
 
-/**
- * Filtre global qui intercepte TOUTES les requêtes
- * Valide le JWT avant de forward vers les APIs backend
- */
 @Component
 public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
@@ -37,26 +33,21 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
         log.debug("Gateway Filter: {} {}", request.getMethod(), path);
 
-        // Si c'est un endpoint public (GET uniquement, sauf /auth qui est toujours public)
         String method = request.getMethod() != null ? request.getMethod().name() : "";
         if (isPublicPath(path, method)) {
             log.debug("Public path, skipping JWT validation: {} {}", method, path);
             return chain.filter(exchange);
         }
 
-        // Sinon, valider le JWT
         String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
 
-        // Pas de header Authorization
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             log.warn("Missing or invalid Authorization header for path: {}", path);
             return unauthorizedResponse(response, "Missing or invalid Authorization header", path);
         }
 
-        // Extraire le token
         String token = authHeader.substring(7);
 
-        // Valider le token
         try {
             if (!jwtUtil.validateToken(token)) {
                 log.warn("Invalid or expired JWT token for path: {}", path);
@@ -67,13 +58,11 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return unauthorizedResponse(response, "JWT validation failed", path);
         }
 
-        // Token valide — extraire les infos utiles
         String username = jwtUtil.extractUsername(token);
         String role     = jwtUtil.extractRole(token);
         Long   userId   = jwtUtil.extractUserId(token);
         log.debug("JWT valid for user: {} role: {} id: {}", username, role, userId);
 
-        // Ajouter username, role et userId dans les headers pour les APIs backend
         ServerHttpRequest.Builder requestBuilder = request.mutate()
                 .header("X-Auth-Username", username);
         if (role != null)   requestBuilder.header("X-User-Role", role);
@@ -84,14 +73,9 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                 .request(modifiedRequest)
                 .build();
 
-        // Continuer la chaîne de filtres
         return chain.filter(modifiedExchange);
     }
 
-    /**
-     * Retourne une réponse 401 Unauthorized avec un message JSON
-     * Format identique à ErrorResponse du user-api (timestamp, status, error, message, path)
-     */
     private Mono<Void> unauthorizedResponse(ServerHttpResponse response, String message, String path) {
         response.setStatusCode(HttpStatus.UNAUTHORIZED);
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
@@ -108,12 +92,6 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         );
     }
 
-    /**
-     * Vérifie si le chemin est public.
-     * - /auth/** : toujours public (POST register/login/refresh)
-     * - /actuator : toujours public
-     * - /events, /deals (lecture) : public uniquement en GET
-     */
     private boolean isPublicPath(String path, String method) {
         // Routes auth et actuator → toujours publiques quelle que soit la méthode
         if (path.startsWith("/api/v1/auth") || path.startsWith("/actuator")) return true;
