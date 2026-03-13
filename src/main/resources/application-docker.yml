@@ -55,7 +55,7 @@ spring:
         - id: community-api
           uri: http://community-api:8083
           predicates:
-            - Path=/api/v1/forum/**, /api/v1/notifications/**, /api/v1/admin/notifications/**
+            - Path=/api/v1/forum/**, /api/v1/notifications/**, /api/v1/admin/notifications/**, /api/v1/admin/**
           filters:
             - StripPrefix=0
             # Rate Limiting

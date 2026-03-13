@@ -28,6 +28,31 @@ public class JwtUtil {
     }
 
     /**
+     * Extrait le rôle depuis le JWT
+     */
+    public String extractRole(String token) {
+        try {
+            return extractAllClaims(token).get("role", String.class);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Extrait l'id utilisateur depuis le JWT
+     */
+    public Long extractUserId(String token) {
+        try {
+            Object userId = extractAllClaims(token).get("userId");
+            if (userId instanceof Integer) return ((Integer) userId).longValue();
+            if (userId instanceof Long) return (Long) userId;
+            return null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
      * Extrait toutes les claims du JWT
      */
     private Claims extractAllClaims(String token) {

@@ -80,14 +80,18 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return unauthorizedResponse(response, "JWT validation failed", path);
         }
 
-        // Token valide
+        // Token valide — extraire les infos utiles
         String username = jwtUtil.extractUsername(token);
-        log.debug("JWT valid for user: {}", username);
+        String role     = jwtUtil.extractRole(token);
+        Long   userId   = jwtUtil.extractUserId(token);
+        log.debug("JWT valid for user: {} role: {} id: {}", username, role, userId);
 
-        // Ajouter le username dans un header pour les APIs backend
-        ServerHttpRequest modifiedRequest = request.mutate()
-                .header("X-Auth-Username", username)
-                .build();
+        // Ajouter username, role et userId dans les headers pour les APIs backend
+        ServerHttpRequest.Builder requestBuilder = request.mutate()
+                .header("X-Auth-Username", username);
+        if (role != null)   requestBuilder.header("X-User-Role", role);
+        if (userId != null) requestBuilder.header("X-User-Id", String.valueOf(userId));
+        ServerHttpRequest modifiedRequest = requestBuilder.build();
 
         ServerWebExchange modifiedExchange = exchange.mutate()
                 .request(modifiedRequest)
