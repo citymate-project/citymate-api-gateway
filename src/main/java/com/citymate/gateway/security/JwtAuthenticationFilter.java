@@ -16,7 +16,6 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 
 /**
  * Filtre global qui intercepte TOUTES les requêtes
@@ -30,19 +29,6 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     @Autowired
     private JwtUtil jwtUtil;
 
-    // Endpoints publics (pas besoin de JWT)
-    private static final List<String> PUBLIC_PATHS = List.of(
-            "/api/v1/auth/register",
-            "/api/v1/auth/login",
-            "/api/v1/auth/refresh",
-            "/actuator",
-            "/api/v1/auth/health",
-            "/api/v1/events",
-            "/api/v1/events/categories",
-            "/api/v1/deals/categories",
-            "/api/v1/deals"
-    );
-
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
@@ -51,9 +37,10 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
         log.debug("Gateway Filter: {} {}", request.getMethod(), path);
 
-        // Si c'est un endpoint public
-        if (isPublicPath(path)) {
-            log.debug("Public path, skipping JWT validation: {}", path);
+        // Si c'est un endpoint public (GET uniquement, sauf /auth qui est toujours public)
+        String method = request.getMethod() != null ? request.getMethod().name() : "";
+        if (isPublicPath(path, method)) {
+            log.debug("Public path, skipping JWT validation: {} {}", method, path);
             return chain.filter(exchange);
         }
 
@@ -122,10 +109,24 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     }
 
     /**
-     * Vérifie si le chemin est public
+     * Vérifie si le chemin est public.
+     * - /auth/** : toujours public (POST register/login/refresh)
+     * - /actuator : toujours public
+     * - /events, /deals (lecture) : public uniquement en GET
      */
-    private boolean isPublicPath(String path) {
-        return PUBLIC_PATHS.stream().anyMatch(path::startsWith);
+    private boolean isPublicPath(String path, String method) {
+        // Routes auth et actuator → toujours publiques quelle que soit la méthode
+        if (path.startsWith("/api/v1/auth") || path.startsWith("/actuator")) return true;
+        // Routes lectures publiques → GET uniquement
+        if ("GET".equalsIgnoreCase(method)) {
+            return path.equals("/api/v1/events")
+                    || path.equals("/api/v1/events/categories")
+                    || path.equals("/api/v1/deals")
+                    || path.equals("/api/v1/deals/categories")
+                    || path.matches("/api/v1/events/\\d+")
+                    || path.matches("/api/v1/deals/\\d+");
+        }
+        return false;
     }
 
     @Override
