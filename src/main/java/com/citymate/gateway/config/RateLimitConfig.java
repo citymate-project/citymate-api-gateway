@@ -22,12 +22,10 @@ public class RateLimitConfig {
     @Primary
     public KeyResolver ipKeyResolver() {
         return exchange -> {
-            String ip = exchange.getRequest()
-                    .getRemoteAddress()
-                    .getAddress()
-                    .getHostAddress();
-
-            System.out.println("Rate Limit check for IP: " + ip);
+            var remoteAddress = exchange.getRequest().getRemoteAddress();
+            String ip = (remoteAddress != null)
+                    ? remoteAddress.getAddress().getHostAddress()
+                    : "unknown";
             return Mono.just(ip);
         };
     }
